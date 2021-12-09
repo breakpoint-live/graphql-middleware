@@ -443,7 +443,7 @@ describe('core:', () => {
     })
   })
 
-  test.only('middleware subscriptions with declared resolver', async () => {
+  test('middleware subscriptions with declared resolver', async () => {
     const schema = getSchema()
 
     const fieldMiddleware: IMiddlewareTypeMap = {
