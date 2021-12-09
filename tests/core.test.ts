@@ -26,6 +26,7 @@ describe('core:', () => {
 
     type Subscription {
       sub: String
+      subWithResolve: String
     }
 
     type Nothing {
@@ -67,6 +68,22 @@ describe('core:', () => {
           }
           return iterator
         },
+      },
+      subWithResolve: {
+        subscribe: async (parent, { arg }, ctx, info) => {
+          const iterator = {
+            next: () => Promise.resolve({ done: false, value: { subWithResolve: arg } }),
+            return: () => {
+              return
+            },
+            throw: () => {
+              return
+            },
+            [$$asyncIterator]: () => iterator,
+          }
+          return iterator
+        },
+        resolve: (parent, { arg }, ctx, info) => arg
       },
     },
     Nothing: {
@@ -424,5 +441,44 @@ describe('core:', () => {
         },
       },
     })
+  })
+
+  test.only('middleware subscriptions with declared resolver', async () => {
+    const schema = getSchema()
+
+    const fieldMiddleware: IMiddlewareTypeMap = {
+      Subscription: {
+        sub: async (resolve, parent, args, context, info) => {
+          const _args = { arg: 'changed' }
+          throw Error('threw in middleware')
+        },
+        subWithResolve: async (resolve, parent, args, context, info) => {
+          const _args = { arg: 'changed' }
+          throw Error('threw in middleware')
+        },
+      },
+    }
+    const schemaWithMiddleware = applyMiddleware(schema, fieldMiddleware)
+
+    const query = `
+      subscription {
+        sub
+      }
+    `
+    const queryResolve = `
+      subscription {
+        subWithResolve
+      }
+    `
+    const iterator = await subscribe(schemaWithMiddleware, parse(query))
+
+    const iteratorResolve = await subscribe(schemaWithMiddleware, parse(queryResolve))
+
+    /* Tests. */
+
+    expect((iterator as ExecutionResult).errors[0].message).toEqual('threw in middleware')
+
+    expect((iteratorResolve as ExecutionResult).errors[0].message).toEqual('threw in middleware')
+
   })
 })

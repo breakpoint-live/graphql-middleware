@@ -61,7 +61,17 @@ function applyMiddlewareToField<TSource, TContext, TArgs>(
   middleware: IMiddlewareFunction<TSource, TContext, TArgs>,
 ): IResolverOptions {
   const parsedField = parseField(field)
-  if (
+  if (isMiddlewareWithFragment(middleware) && parsedField.subscribe) {
+    return {
+      ...parsedField,
+      fragment: middleware.fragment,
+      fragments: middleware.fragments,
+      subscribe: wrapResolverInMiddleware(
+        parsedField.subscribe,
+        middleware.resolve,
+      ),
+    }
+  } else if (
     isMiddlewareWithFragment(middleware) &&
     parsedField.resolve &&
     parsedField.resolve !== defaultFieldResolver
@@ -75,15 +85,10 @@ function applyMiddlewareToField<TSource, TContext, TArgs>(
         middleware.resolve,
       ),
     }
-  } else if (isMiddlewareWithFragment(middleware) && parsedField.subscribe) {
+  } else if (isMiddlewareResolver(middleware) && parsedField.subscribe) {
     return {
       ...parsedField,
-      fragment: middleware.fragment,
-      fragments: middleware.fragments,
-      subscribe: wrapResolverInMiddleware(
-        parsedField.subscribe,
-        middleware.resolve,
-      ),
+      subscribe: wrapResolverInMiddleware(parsedField.subscribe, middleware),
     }
   } else if (
     isMiddlewareResolver(middleware) &&
@@ -93,11 +98,6 @@ function applyMiddlewareToField<TSource, TContext, TArgs>(
     return {
       ...parsedField,
       resolve: wrapResolverInMiddleware(parsedField.resolve, middleware),
-    }
-  } else if (isMiddlewareResolver(middleware) && parsedField.subscribe) {
-    return {
-      ...parsedField,
-      subscribe: wrapResolverInMiddleware(parsedField.subscribe, middleware),
     }
   } else if (
     isMiddlewareWithFragment(middleware) &&
